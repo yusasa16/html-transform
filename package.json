@@ -1,0 +1,53 @@
+{
+	"name": "@yusasa16/html-transform",
+	"version": "0.1.0",
+	"description": "A CLI tool to transform HTML files using custom JavaScript/TypeScript functions.",
+	"author": "",
+	"license": "ISC",
+	"main": "dist/cli.js",
+	"bin": {
+		"html-transform": "./dist/cli.js"
+	},
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"start": "npx jiti src/cli.ts",
+		"lint": "npx @biomejs/biome lint .",
+		"lint:fix": "npx @biomejs/biome lint --write .",
+		"format": "npx @biomejs/biome format .",
+		"format:fix": "npx @biomejs/biome format --write .",
+		"check": "npx @biomejs/biome check .",
+		"check:fix": "npx @biomejs/biome check --write .",
+		"test:cli": "npm run build && node dist/cli.js -i test/input.html -t test/transforms/ -o test/output.html --verbose",
+		"test": "vitest",
+		"test:run": "vitest run",
+		"test:coverage": "vitest run --coverage",
+		"test:watch": "vitest --watch",
+		"test:ui": "vitest --ui",
+		"ci": "npm run lint && npm run test:run && npm run build"
+	},
+	"keywords": [
+		"html",
+		"transform",
+		"dom",
+		"cli",
+		"typescript",
+		"jsdom",
+		"html-processing"
+	],
+	"dependencies": {
+		"commander": "^14.0.0",
+		"glob": "^11.0.3",
+		"jiti": "^2.4.2",
+		"jsdom": "^26.1.0",
+		"prettier": "^3.6.2"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.0.6",
+		"@types/jsdom": "^21.1.7",
+		"@types/node": "^24.0.6",
+		"@vitest/coverage-v8": "^2.1.8",
+		"typescript": "^5.8.3",
+		"vitest": "^2.1.8"
+	}
+}
