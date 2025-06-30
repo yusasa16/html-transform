@@ -1,21 +1,25 @@
 import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ResolvedOptions } from "../types";
 import { transform } from "./transformer";
 
 describe("Integration Tests", () => {
-	const testDir = "/tmp/html-transform-integration-test";
-	const inputDir = `${testDir}/input`;
-	const outputDir = `${testDir}/output`;
-	const transformsDir = `${testDir}/transforms`;
-	const inputFile = `${inputDir}/test.html`;
+	let testDir: string;
+	let inputDir: string;
+	let outputDir: string;
+	let transformsDir: string;
+	let inputFile: string;
 
 	beforeEach(() => {
-		// Create test directory structure
-		if (fs.existsSync(testDir)) {
-			fs.rmSync(testDir, { recursive: true, force: true });
-		}
-		fs.mkdirSync(testDir, { recursive: true });
+		// Create test directory structure using temporary directory
+		testDir = fs.mkdtempSync(path.join(os.tmpdir(), "html-transform-integration-test-"));
+		inputDir = path.join(testDir, "input");
+		outputDir = path.join(testDir, "output");
+		transformsDir = path.join(testDir, "transforms");
+		inputFile = path.join(inputDir, "test.html");
+
 		fs.mkdirSync(inputDir, { recursive: true });
 		fs.mkdirSync(outputDir, { recursive: true });
 		fs.mkdirSync(transformsDir, { recursive: true });
@@ -186,7 +190,7 @@ module.exports = {
 
 	it("should handle transform with template reference", async () => {
 		// Create template file
-		const templateFile = `${testDir}/template.html`;
+		const templateFile = path.join(testDir, "template.html");
 		fs.writeFileSync(
 			templateFile,
 			`
