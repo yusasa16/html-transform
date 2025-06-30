@@ -1,4 +1,5 @@
 import path from "node:path";
+import { consola } from "consola";
 import type { Transform } from "../types/index.js";
 
 export function loadModule<T>(filePath: string): T {
@@ -45,12 +46,12 @@ export function loadTransformModule(filePath: string): Transform {
 			error instanceof Error &&
 			error.message.includes("Transform file does not export")
 		) {
-			console.warn(
-				`Transform file ${fileName} does not export a valid transform function`,
+			consola.warn(
+				`⚠️ Transform file ${fileName} does not export a valid transform function`,
 			);
 			throw error;
 		}
-		console.error(`Error loading transform from ${fileName}:`, error);
+		consola.error(`❌ Error loading transform from ${fileName}:`, error);
 		throw error;
 	}
 }

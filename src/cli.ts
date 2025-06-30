@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Command } from "commander";
 import { glob } from "glob";
+import { consola } from "consola";
 import { transform } from "./core/transformer";
 import type { CLIOptions, ResolvedOptions, TransformConfig } from "./types";
 import { findConfigFile, loadConfig } from "./utils/config";
@@ -35,15 +36,16 @@ program
 	.option("--prettier-config <path>", "Custom Prettier config file")
 	.action(async (options: CLIOptions) => {
 		try {
+			consola.start("Starting HTML DOM transformation...");
+			
 			if (options.verbose) {
-				console.log("Starting HTML DOM transformation...");
-				console.log("Options:", options);
+				consola.info("CLI Options:", options);
 			}
 
 			const resolved = await resolveOptions(options);
 
 			if (resolved.verbose) {
-				console.log("Resolved options:", resolved);
+				consola.info("Resolved options:", resolved);
 			}
 
 			// Find common input base path to preserve directory structure
@@ -62,6 +64,11 @@ program
 				}
 			}
 
+			// Progress indication for multiple files
+			if (resolved.input.length > 1) {
+				consola.start(`Processing ${resolved.input.length} HTML files...`);
+			}
+
 			for (const inputFile of resolved.input) {
 				const result = await transform({
 					...resolved,
@@ -78,25 +85,20 @@ program
 					if (!fs.existsSync(outputDirForFile)) {
 						fs.mkdirSync(outputDirForFile, { recursive: true });
 						if (resolved.verbose) {
-							console.log(`Created output directory: ${outputDirForFile}`);
+							consola.info(`Created output directory: ${outputDirForFile}`);
 						}
 					}
 
 					fs.writeFileSync(outputPath, result);
-					if (resolved.verbose) {
-						console.log(`Output written to: ${outputPath}`);
-					}
+					consola.success(`${path.relative(process.cwd(), inputFile)} → ${path.relative(process.cwd(), outputPath)}`);
 				} else {
-					console.log(`=== ${inputFile} ===`);
-					console.log(result);
+					consola.box(`=== ${inputFile} ===\n${result}`);
 				}
 			}
 
-			if (options.verbose) {
-				console.log("Transformation completed successfully");
-			}
+			consola.success(`🎉 Transformation completed successfully (${resolved.input.length} files processed)`);
 		} catch (error) {
-			console.error("Error during transformation:", error);
+			consola.error("Error during transformation:", error);
 			process.exit(1);
 		}
 	});
@@ -109,9 +111,7 @@ async function resolveOptions(options: CLIOptions): Promise<ResolvedOptions> {
 	if (configPath) {
 		try {
 			config = loadConfig(configPath);
-			if (options.verbose) {
-				console.log(`Loaded config from: ${configPath}`);
-			}
+			consola.info(`📄 Config loaded from: ${path.relative(process.cwd(), configPath)}`);
 		} catch (error) {
 			handleConfigError(error, options.config);
 		}

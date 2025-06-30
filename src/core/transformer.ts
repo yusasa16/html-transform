@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { JSDOM } from "jsdom";
+import { consola } from "consola";
 import type {
 	ResolvedOptions,
 	Transform,
@@ -99,7 +100,7 @@ export async function applyTransforms(
 		try {
 			await transform.transform(fullContext);
 		} catch (error) {
-			console.error(`Error applying transform "${transform.name}":`, error);
+			consola.error(`❌ Error applying transform "${transform.name}":`, error);
 			throw error;
 		}
 	}
@@ -129,10 +130,7 @@ export async function formatHTML(
 			...config,
 		});
 	} catch (error) {
-		console.warn(
-			"Prettier formatting failed, returning unformatted HTML:",
-			error,
-		);
+		consola.warn("⚠️ Prettier formatting failed, returning unformatted HTML:", error);
 		return html;
 	}
 }
@@ -161,12 +159,7 @@ export async function transform(
 		options.transformOrder,
 	);
 
-	if (options.verbose) {
-		console.log(
-			`Loaded ${transforms.length} transforms:`,
-			transforms.map((t) => t.name),
-		);
-	}
+	consola.info(`🔧 Loaded ${transforms.length} transforms:`, transforms.map((t) => t.name).join(", "));
 
 	await applyTransforms(inputDom, transforms, {
 		templateDom,
@@ -177,7 +170,7 @@ export async function transform(
 	const resultHTML = inputDom.serialize();
 
 	if (options.dryRun) {
-		console.log("Dry run mode - no files will be written");
+		consola.warn("🔍 Dry run mode - no files will be written");
 		return resultHTML;
 	}
 

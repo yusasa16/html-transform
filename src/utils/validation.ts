@@ -1,3 +1,5 @@
+import { consola } from "consola";
+
 export function validateRequired<T>(
 	value: T | undefined | null,
 	name: string,
@@ -26,5 +28,5 @@ export function handleConfigError(error: unknown, configPath?: string): void {
 		throw error;
 	}
 	// Otherwise, just warn
-	console.warn(`Warning: Could not load config file: ${error}`);
+	consola.warn(`⚠️ Warning: Could not load config file: ${error}`);
 }
