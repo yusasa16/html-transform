@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // Helper function for running CLI commands
@@ -35,19 +37,19 @@ async function runCLI(
 }
 
 describe("CLI", () => {
-	const testDir = "/tmp/html-transform-test";
-	const inputFile = `${testDir}/input.html`;
-	const outputFile = `${testDir}/output.html`;
-	const transformsDir = `${testDir}/transforms`;
+	let testDir: string;
+	let inputFile: string;
+	let outputFile: string;
+	let transformsDir: string;
 
 	beforeEach(() => {
-		// Create test directory structure
-		if (!fs.existsSync(testDir)) {
-			fs.mkdirSync(testDir, { recursive: true });
-		}
-		if (!fs.existsSync(transformsDir)) {
-			fs.mkdirSync(transformsDir, { recursive: true });
-		}
+		// Create test directory structure using temporary directory
+		testDir = fs.mkdtempSync(path.join(os.tmpdir(), "html-transform-cli-test-"));
+		inputFile = path.join(testDir, "input.html");
+		outputFile = path.join(testDir, "output.html");
+		transformsDir = path.join(testDir, "transforms");
+		
+		fs.mkdirSync(transformsDir, { recursive: true });
 
 		// Create test input HTML
 		fs.writeFileSync(

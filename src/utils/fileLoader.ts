@@ -19,6 +19,10 @@ export function ensureDirectoryExists(dirPath: string): void {
 	if (!fs.existsSync(dirPath)) {
 		throw new Error(`Directory not found: ${dirPath}`);
 	}
+	const stats = fs.statSync(dirPath);
+	if (!stats.isDirectory()) {
+		throw new Error(`Directory not found: ${dirPath}`);
+	}
 }
 
 export function listFiles(dirPath: string, extensions: string[]): string[] {
