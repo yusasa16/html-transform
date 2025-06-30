@@ -1,14 +1,17 @@
 # html-transform
 
-A CLI tool to transform HTML files using custom JavaScript/TypeScript functions.
+A CLI tool to transform HTML files using custom JavaScript/TypeScript functions with config-driven architecture.
 
 ## Features
 
 - 🚀 **Direct TypeScript support** - No compilation required, runs `.ts` files directly
+- 📋 **Config-driven architecture** - Centralized configuration with YAML/JSON support
 - 🎯 **Custom transformations** - Write your own transformation logic
+- 🔄 **Batch processing** - Transform multiple HTML files with glob patterns
+- 📁 **Directory structure preservation** - Maintains nested folder hierarchies
 - 🔧 **Template reference** - Compare against reference HTML files
 - ✨ **Prettier integration** - Automatic code formatting
-- 📦 **Future npm support** - Will support npx usage
+- 📦 **npm package ready** - Ready for npx usage
 
 ## Installation
 
@@ -21,12 +24,6 @@ npm install
 npm run build
 ```
 
-### Use the tool
-
-```bash
-node dist/cli.js -i input.html -t ./transforms/ -o output.html
-```
-
 ### npm package (ready for publishing)
 
 ```bash
@@ -34,15 +31,36 @@ node dist/cli.js -i input.html -t ./transforms/ -o output.html
 npm install -g @yusasa16/html-transform
 
 # Direct usage without installation
-npx @yusasa16/html-transform -i input.html -t ./transforms/ -o output.html
+npx @yusasa16/html-transform -t ./transforms/
 ```
 
 ## Quick Start
 
-1. **Create transform functions**:
+1. **Create transforms directory with config**:
+
+```yaml
+# transforms/config.yaml
+transforms:
+  - "update-title.ts"
+  - "update-header.ts"
+  - "add-classes.ts"
+
+# Required settings
+input: "../input/**/*.html"
+output: "../output"
+
+# Optional settings
+reference: null
+dryRun: false
+verbose: true
+noFormat: false
+prettierConfig: null
+```
+
+2. **Create transform functions**:
 
 ```typescript
-// transforms/01-update-title.ts
+// transforms/update-title.ts
 import { Transform } from "@yusasa16/html-transform";
 
 export default {
@@ -57,34 +75,126 @@ export default {
 } as Transform;
 ```
 
-2. **Run transformation**:
+3. **Set up directory structure**:
+
+```
+project/
+├── input/
+│   ├── index.html
+│   ├── about.html
+│   └── blog/
+│       └── post.html
+├── transforms/
+│   ├── config.yaml
+│   ├── update-title.ts
+│   └── update-header.ts
+└── output/         # Auto-generated
+```
+
+4. **Run transformation**:
 
 ```bash
-node dist/cli.js -i input.html -t ./transforms/ -o output.html
+# Using config file only
+html-transform -t transforms/
+
+# Override config with CLI options
+html-transform -t transforms/ -i "custom/*.html" -o custom-output/
 ```
 
 ## Usage
 
 ```bash
-node dist/cli.js [options]
+html-transform [options]
 
 Options:
-  -i, --input <path>          Input HTML file path
-  -t, --transforms <dir>      Directory containing transform files
-  -r, --reference <path>      Reference template HTML file (optional)
-  -o, --output <path>         Output file path (default: stdout)
-  -c, --config <path>         Configuration file path (optional)
-  --dry-run                   Run without writing files
-  --verbose                   Enable verbose logging
-  --no-format                 Skip Prettier formatting
-  --prettier-config <path>    Custom Prettier config file
+  -i, --input <pattern>       Input HTML file pattern (glob) - overrides config
+  -t, --transforms <dir>      Directory containing transform files and config
+  -r, --reference <path>      Reference template HTML file - overrides config
+  -o, --output <dir>          Output directory path - overrides config
+  -c, --config <path>         Custom config file path (default: auto-detect)
+  --dry-run                   Run without writing files - overrides config
+  --verbose                   Enable verbose logging - overrides config
+  --no-format                 Skip Prettier formatting - overrides config
+  --prettier-config <path>    Custom Prettier config file - overrides config
   -h, --help                  Display help
   -V, --version               Display version
 ```
 
+## Configuration
+
+### Config File (Required)
+
+Every transforms directory must contain a `config.yaml`, `config.yml`, or `config.json` file:
+
+#### YAML Format (recommended)
+
+```yaml
+# Transform execution order
+transforms:
+  - "update-title.ts"
+  - "update-header.ts" 
+  - "add-classes.ts"
+
+# Required settings
+input: "../input/**/*.html"    # Glob pattern (relative to transforms dir)
+output: "../output"            # Output directory (relative to transforms dir)
+
+# Optional settings
+reference: "../template.html"  # Reference template file
+dryRun: false                  # Preview mode
+verbose: true                  # Detailed logging
+noFormat: false                # Skip Prettier formatting
+prettierConfig: null           # Custom Prettier config
+```
+
+#### JSON Format
+
+```json
+{
+  "transforms": [
+    "update-title.ts",
+    "update-header.ts",
+    "add-classes.ts"
+  ],
+  "input": "../input/**/*.html",
+  "output": "../output",
+  "reference": null,
+  "dryRun": false,
+  "verbose": true,
+  "noFormat": false,
+  "prettierConfig": null
+}
+```
+
+### CLI Option Priority
+
+CLI options always override config file settings:
+
+1. **CLI options** (highest priority)
+2. **Config file settings**
+3. **Default values** (lowest priority)
+
+### Path Resolution
+
+- **Relative paths** in config files are resolved relative to the transforms directory
+- **Absolute paths** are used as-is
+- **CLI paths** are resolved relative to current working directory
+
 ## Transform Files
 
-Transform files are TypeScript/JavaScript modules that export transformation functions:
+Transform files are TypeScript/JavaScript modules that export transformation functions.
+
+### File Naming
+
+Transform files are executed in the order specified in the config file, **not** by filename:
+
+```yaml
+# This controls execution order, not filename prefixes
+transforms:
+  - "header-updates.ts"      # Executes first
+  - "content-changes.ts"     # Executes second  
+  - "footer-cleanup.ts"      # Executes third
+```
 
 ### Basic Transform
 
@@ -131,24 +241,74 @@ Each transform receives a context object with:
 - `document`: Document object for manipulation
 - `templateDom`: JSDOM instance of reference template (if provided)
 - `templateDocument`: Document object of template (if provided)
-- `config`: Configuration object (if config file provided)
+- `config`: Configuration object (legacy - use config file instead)
 - `utils`: Utility functions for common DOM operations
 
-## Transform Ordering
+### Utility Functions
 
-Transforms are executed in alphabetical order. Use numeric prefixes to control execution order:
+The `utils` object provides helpful DOM manipulation functions:
 
-```
-transforms/
-├── 01-update-meta.ts
-├── 02-update-header.ts
-├── 03-update-content.ts
-└── 99-cleanup.ts
+```typescript
+export default {
+    name: "use-utilities",
+    transform: ({ document, utils }) => {
+        const oldElement = document.querySelector(".old");
+        const newElement = document.createElement("div");
+        
+        // Copy all attributes
+        utils.copyAttributes(oldElement, newElement);
+        
+        // Move all children
+        utils.moveChildren(oldElement, newElement);
+        
+        // Replace element in DOM
+        utils.replaceElement(oldElement, newElement);
+    },
+} as Transform;
 ```
 
 ## Examples
 
-### Update Page Title
+### Directory Structure Preservation
+
+Input structure:
+```
+input/
+├── index.html
+├── about.html
+└── blog/
+    ├── post1.html
+    └── 2023/
+        └── post2.html
+```
+
+Output structure (preserved):
+```
+output/
+├── index.html
+├── about.html
+└── blog/
+    ├── post1.html
+    └── 2023/
+        └── post2.html
+```
+
+### Multi-file Glob Patterns
+
+```yaml
+# Process all HTML files recursively
+input: "../src/**/*.html"
+
+# Process specific patterns
+input: "../pages/*.html"
+
+# Process multiple extensions (requires multiple runs)
+input: "../content/**/*.{html,htm}"
+```
+
+### Common Transform Examples
+
+#### Update Page Title
 
 ```typescript
 export default {
@@ -162,7 +322,7 @@ export default {
 } as Transform;
 ```
 
-### Add CSS Classes
+#### Add CSS Classes
 
 ```typescript
 export default {
@@ -175,7 +335,7 @@ export default {
 } as Transform;
 ```
 
-### Replace Content from Template
+#### Update Navigation from Template
 
 ```typescript
 export default {
@@ -196,32 +356,18 @@ export default {
 } as Transform;
 ```
 
-## Configuration
-
-You can provide a JSON configuration file that will be passed to transforms:
-
-```json
-{
-    "siteName": "My Website",
-    "theme": "dark",
-    "features": {
-        "analytics": true,
-        "comments": false
-    }
-}
-```
-
-Use in transforms:
+#### Conditional Transformations
 
 ```typescript
 export default {
-    name: "apply-config",
-    transform: ({ document, config }) => {
-        if (config?.siteName) {
-            const title = document.querySelector("title");
-            if (title) {
-                title.textContent = `${title.textContent} - ${config.siteName}`;
-            }
+    name: "conditional-update",
+    transform: ({ document }) => {
+        // Only process blog pages
+        if (document.querySelector(".blog-post")) {
+            const meta = document.createElement("meta");
+            meta.setAttribute("name", "article");
+            meta.setAttribute("content", "true");
+            document.head.appendChild(meta);
         }
     },
 } as Transform;
@@ -239,6 +385,19 @@ npm run build
 
 ```bash
 npm run dev
+```
+
+### Testing with Local Files
+
+```bash
+# Use development version
+npm start -- -t test/transforms/ --verbose
+
+# Test without writing files
+npm start -- -t test/transforms/ --dry-run
+
+# Override input pattern
+npm start -- -t test/transforms/ -i "test/input/*.html"
 ```
 
 ### Testing
@@ -273,14 +432,56 @@ npm run check:fix
 npm run ci
 ```
 
+## Error Handling
+
+### Common Errors
+
+- **Missing config file**: Ensure `config.yaml`, `config.yml`, or `config.json` exists in transforms directory
+- **Missing input/output**: Both input pattern and output directory are required (CLI or config)
+- **No files found**: Check that glob pattern matches existing files
+- **Transform errors**: Check transform syntax and logic
+
+### Debugging
+
+```bash
+# Enable verbose logging
+html-transform -t transforms/ --verbose
+
+# Dry run to preview changes
+html-transform -t transforms/ --dry-run
+
+# Check files being processed
+html-transform -t transforms/ --verbose | grep "Output written"
+```
+
 ## TypeScript Support
 
 The tool has full TypeScript support with type definitions for:
 
-- Transform functions
-- Context objects
+- Transform functions and context
+- Configuration objects
+- CLI options and resolved options
 - Utility functions
-- CLI options
+
+## Migration from Legacy Version
+
+If upgrading from the old numeric-prefix system:
+
+1. **Create config file** in transforms directory
+2. **List transforms** in desired execution order
+3. **Remove numeric prefixes** from filenames (optional)
+4. **Add input/output** settings to config
+5. **Update CLI usage** to use new options
+
+Example migration:
+
+```bash
+# Old usage
+html-transform -i input.html -o output.html -t transforms/
+
+# New usage  
+html-transform -t transforms/
+```
 
 ## License
 
