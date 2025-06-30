@@ -23,7 +23,7 @@ export interface TransformUtils {
 }
 
 export interface CLIOptions {
-	input: string;
+	input?: string;
 	transforms: string;
 	reference?: string;
 	output?: string;
@@ -32,6 +32,31 @@ export interface CLIOptions {
 	verbose?: boolean;
 	noFormat?: boolean;
 	prettierConfig?: string;
+}
+
+export interface TransformConfig {
+	transforms: string[];
+	input?: string;
+	reference?: string;
+	output?: string;
+	dryRun?: boolean;
+	noFormat?: boolean;
+	prettierConfig?: string;
+	verbose?: boolean;
+}
+
+export interface ResolvedOptions {
+	input: string[];
+	transforms: string;
+	transformOrder: string[];
+	reference?: string;
+	outputDir?: string;
+	dryRun: boolean;
+	verbose: boolean;
+	noFormat: boolean;
+	prettierConfig?: string;
+	inputPattern?: string;
+	config: Partial<TransformConfig>;
 }
 
 export interface FormatOptions {

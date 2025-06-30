@@ -6,6 +6,7 @@ import type {
 	Transform,
 	TransformContext,
 	TransformUtils,
+	ResolvedOptions,
 } from "../types";
 
 export const transformUtils: TransformUtils = {
@@ -42,19 +43,31 @@ export function loadHTML(filePath: string): JSDOM {
 
 export async function loadTransforms(
 	transformsDir: string,
+	transformOrder?: string[],
 ): Promise<Transform[]> {
 	if (!fs.existsSync(transformsDir)) {
 		throw new Error(`Transforms directory not found: ${transformsDir}`);
 	}
 
-	const files = fs
+	const allFiles = fs
 		.readdirSync(transformsDir)
-		.filter((file) => file.endsWith(".ts") || file.endsWith(".js"))
-		.sort((a, b) => {
+		.filter((file) => file.endsWith(".ts") || file.endsWith(".js"));
+
+	let files: string[];
+	if (transformOrder && transformOrder.length > 0) {
+		// Use config-specified order
+		files = transformOrder.filter(file => allFiles.includes(file));
+		// Add any remaining files not in config
+		const remainingFiles = allFiles.filter(file => !transformOrder.includes(file));
+		files.push(...remainingFiles.sort());
+	} else {
+		// Fallback to numeric prefix sorting
+		files = allFiles.sort((a, b) => {
 			const aNum = Number.parseInt(a.match(/^\d+/)?.[0] || "999");
 			const bNum = Number.parseInt(b.match(/^\d+/)?.[0] || "999");
 			return aNum - bNum;
 		});
+	}
 
 	const transforms: Transform[] = [];
 
@@ -125,7 +138,7 @@ export async function applyTransforms(
 
 export async function formatHTML(
 	html: string,
-	options: CLIOptions,
+	options: { noFormat?: boolean; prettierConfig?: string },
 ): Promise<string> {
 	if (options.noFormat) {
 		return html;
@@ -155,7 +168,7 @@ export async function formatHTML(
 	}
 }
 
-export async function transform(options: CLIOptions): Promise<string> {
+export async function transform(options: ResolvedOptions & { input: string }): Promise<string> {
 	const inputDom = loadHTML(options.input);
 
 	let templateDom: JSDOM | undefined;
@@ -166,13 +179,7 @@ export async function transform(options: CLIOptions): Promise<string> {
 		templateDocument = templateDom.window.document;
 	}
 
-	let config: Record<string, unknown> = {};
-	if (options.config && fs.existsSync(options.config)) {
-		const configContent = fs.readFileSync(options.config, "utf-8");
-		config = JSON.parse(configContent);
-	}
-
-	const transforms = await loadTransforms(options.transforms);
+	const transforms = await loadTransforms(options.transforms, options.transformOrder);
 
 	if (options.verbose) {
 		console.log(
@@ -184,7 +191,7 @@ export async function transform(options: CLIOptions): Promise<string> {
 	await applyTransforms(inputDom, transforms, {
 		templateDom,
 		templateDocument,
-		config,
+		config: {},
 	});
 
 	const resultHTML = inputDom.serialize();
@@ -194,5 +201,8 @@ export async function transform(options: CLIOptions): Promise<string> {
 		return resultHTML;
 	}
 
-	return await formatHTML(resultHTML, options);
+	return await formatHTML(resultHTML, {
+		noFormat: options.noFormat,
+		prettierConfig: options.prettierConfig
+	});
 }

@@ -1,0 +1,16 @@
+# Transform configuration file
+transforms:
+    - "update-title.ts"
+    - "update-header.ts"
+    - "add-class.ts"
+
+# Required settings
+input: "../input/**/*.html"
+output: "../output"
+
+# Optional settings
+reference: null
+dryRun: false
+verbose: true
+noFormat: false
+prettierConfig: null
