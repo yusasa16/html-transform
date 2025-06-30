@@ -2,12 +2,18 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { JSDOM } from "jsdom";
 import type {
-	CLIOptions,
+	ResolvedOptions,
 	Transform,
 	TransformContext,
 	TransformUtils,
-	ResolvedOptions,
 } from "../types";
+import {
+	ensureDirectoryExists,
+	ensureFileExists,
+	listFiles,
+} from "../utils/fileLoader.js";
+import { loadTransformModule } from "../utils/moduleLoader.js";
+import { validateRequired } from "../utils/validation.js";
 
 export const transformUtils: TransformUtils = {
 	copyAttributes(from: Element, to: Element) {
@@ -33,10 +39,7 @@ export const transformUtils: TransformUtils = {
 };
 
 export function loadHTML(filePath: string): JSDOM {
-	if (!fs.existsSync(filePath)) {
-		throw new Error(`HTML file not found: ${filePath}`);
-	}
-
+	ensureFileExists(filePath);
 	const htmlContent = fs.readFileSync(filePath, "utf-8");
 	return new JSDOM(htmlContent);
 }
@@ -45,20 +48,18 @@ export async function loadTransforms(
 	transformsDir: string,
 	transformOrder?: string[],
 ): Promise<Transform[]> {
-	if (!fs.existsSync(transformsDir)) {
-		throw new Error(`Transforms directory not found: ${transformsDir}`);
-	}
+	ensureDirectoryExists(transformsDir);
 
-	const allFiles = fs
-		.readdirSync(transformsDir)
-		.filter((file) => file.endsWith(".ts") || file.endsWith(".js"));
+	const allFiles = listFiles(transformsDir, [".ts", ".js"]);
 
 	let files: string[];
 	if (transformOrder && transformOrder.length > 0) {
 		// Use config-specified order
-		files = transformOrder.filter(file => allFiles.includes(file));
+		files = transformOrder.filter((file) => allFiles.includes(file));
 		// Add any remaining files not in config
-		const remainingFiles = allFiles.filter(file => !transformOrder.includes(file));
+		const remainingFiles = allFiles.filter(
+			(file) => !transformOrder.includes(file),
+		);
 		files.push(...remainingFiles.sort());
 	} else {
 		// Fallback to numeric prefix sorting
@@ -74,41 +75,9 @@ export async function loadTransforms(
 	for (const file of files) {
 		const filePath = path.resolve(transformsDir, file);
 		try {
-			type ModuleExports = {
-				default?: Transform;
-				transform?: Transform["transform"];
-				name?: string;
-			} & Transform;
-
-			let moduleExports: ModuleExports;
-
-			if (file.endsWith(".ts")) {
-				// Use jiti to load TypeScript files directly
-				const { createJiti } = require("jiti");
-				const jiti = createJiti(__filename, {
-					interopDefault: true,
-					transformOptions: {
-						typescript: true,
-					},
-				});
-				moduleExports = jiti(filePath) as ModuleExports;
-			} else {
-				// Regular require for JavaScript files
-				moduleExports = require(filePath) as ModuleExports;
-			}
-
-			const transform = moduleExports.default || moduleExports;
-
-			if (typeof transform.transform === "function") {
-				transforms.push(transform);
-			} else {
-				console.warn(
-					`Transform file ${file} does not export a valid transform function`,
-				);
-			}
-		} catch (error) {
-			console.error(`Error loading transform from ${file}:`, error);
-		}
+			const transform = loadTransformModule(filePath);
+			transforms.push(transform);
+		} catch (error) {}
 	}
 
 	return transforms;
@@ -168,8 +137,16 @@ export async function formatHTML(
 	}
 }
 
-export async function transform(options: ResolvedOptions & { input: string }): Promise<string> {
-	const inputDom = loadHTML(options.input);
+export async function transform(
+	options: ResolvedOptions & { input: string },
+): Promise<string> {
+	const inputFile = validateRequired(options.input, "Input file");
+	const transformsDir = validateRequired(
+		options.transforms,
+		"Transforms directory",
+	);
+
+	const inputDom = loadHTML(inputFile);
 
 	let templateDom: JSDOM | undefined;
 	let templateDocument: Document | undefined;
@@ -179,7 +156,10 @@ export async function transform(options: ResolvedOptions & { input: string }): P
 		templateDocument = templateDom.window.document;
 	}
 
-	const transforms = await loadTransforms(options.transforms, options.transformOrder);
+	const transforms = await loadTransforms(
+		transformsDir,
+		options.transformOrder,
+	);
 
 	if (options.verbose) {
 		console.log(
@@ -203,6 +183,6 @@ export async function transform(options: ResolvedOptions & { input: string }): P
 
 	return await formatHTML(resultHTML, {
 		noFormat: options.noFormat,
-		prettierConfig: options.prettierConfig
+		prettierConfig: options.prettierConfig,
 	});
 }
