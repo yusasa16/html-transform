@@ -2,6 +2,18 @@
 
 A CLI tool to transform HTML files using custom JavaScript/TypeScript functions with config-driven architecture.
 
+## ⚠️ CRITICAL SECURITY WARNING
+
+**This tool executes arbitrary TypeScript/JavaScript code and has known security vulnerabilities:**
+
+- 🚨 **Arbitrary Code Execution**: Transform files can execute any Node.js code
+- 🚨 **Path Traversal**: File paths are not properly validated  
+- 🚨 **Dependency Vulnerabilities**: Contains vulnerable dependencies
+
+**DO NOT USE with untrusted transforms or in production environments without proper security measures.**
+
+See [SECURITY.md](./SECURITY.md) for detailed security information.
+
 ## Features
 
 - 🚀 **Direct TypeScript support** - No compilation required, runs `.ts` files directly
