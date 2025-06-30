@@ -65,9 +65,22 @@ describe("CLI", () => {
 		`,
 		);
 
+		// Create config file
+		fs.writeFileSync(
+			`${transformsDir}/config.yaml`,
+			`
+transforms:
+  - "update.js"
+input: "${inputFile}"
+output: "${outputFile}"
+verbose: false
+noFormat: true
+		`,
+		);
+
 		// Create test transform
 		fs.writeFileSync(
-			`${transformsDir}/01-update.js`,
+			`${transformsDir}/update.js`,
 			`
 module.exports = {
 	name: "update-title",
@@ -94,7 +107,7 @@ module.exports = {
 	});
 
 	it("should process HTML file with transforms", async () => {
-		const args = ["-i", inputFile, "-t", transformsDir, "-o", outputFile];
+		const args = ["-t", transformsDir];
 
 		const result = await runCLI(args);
 

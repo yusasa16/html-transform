@@ -1,13 +1,14 @@
 import * as fs from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { CLIOptions } from "../types";
+import type { ResolvedOptions } from "../types";
 import { transform } from "./transformer";
 
 describe("Integration Tests", () => {
 	const testDir = "/tmp/html-transform-integration-test";
-	const inputFile = `${testDir}/input.html`;
-	const _outputFile = `${testDir}/output.html`;
+	const inputDir = `${testDir}/input`;
+	const outputDir = `${testDir}/output`;
 	const transformsDir = `${testDir}/transforms`;
+	const inputFile = `${inputDir}/test.html`;
 
 	beforeEach(() => {
 		// Create test directory structure
@@ -15,6 +16,8 @@ describe("Integration Tests", () => {
 			fs.rmSync(testDir, { recursive: true, force: true });
 		}
 		fs.mkdirSync(testDir, { recursive: true });
+		fs.mkdirSync(inputDir, { recursive: true });
+		fs.mkdirSync(outputDir, { recursive: true });
 		fs.mkdirSync(transformsDir, { recursive: true });
 
 		// Create test input HTML
@@ -43,9 +46,21 @@ describe("Integration Tests", () => {
 	});
 
 	it("should apply single transform to HTML", async () => {
+		// Create config file
+		fs.writeFileSync(
+			`${transformsDir}/config.yaml`,
+			`
+transforms:
+  - "update-title.js"
+input: "${inputDir}/*.html"
+output: "${outputDir}"
+noFormat: true
+		`,
+		);
+
 		// Create test transform
 		fs.writeFileSync(
-			`${transformsDir}/01-update-title.js`,
+			`${transformsDir}/update-title.js`,
 			`
 module.exports = {
 	name: "update-title",
@@ -59,22 +74,47 @@ module.exports = {
 		`,
 		);
 
-		const options: CLIOptions = {
-			input: inputFile,
+		const resolvedOptions: ResolvedOptions = {
+			input: [inputFile],
 			transforms: transformsDir,
+			transformOrder: ["update-title.js"],
+			reference: undefined,
+			outputDir: outputDir,
+			dryRun: false,
+			verbose: false,
 			noFormat: true,
+			prettierConfig: undefined,
+			inputPattern: `${inputDir}/*.html`,
+			config: {}
 		};
 
-		const result = await transform(options);
+		const result = await transform({
+			...resolvedOptions,
+			input: inputFile
+		});
 
 		expect(result).toContain("Updated Title");
 		expect(result).toContain("Original Header");
 	});
 
 	it("should apply multiple transforms in order", async () => {
+		// Create config file
+		fs.writeFileSync(
+			`${transformsDir}/config.yaml`,
+			`
+transforms:
+  - "update-title.js"
+  - "update-header.js"
+  - "add-class.js"
+input: "${inputDir}/*.html"
+output: "${outputDir}"
+noFormat: true
+		`,
+		);
+
 		// Create multiple transforms
 		fs.writeFileSync(
-			`${transformsDir}/01-update-title.js`,
+			`${transformsDir}/update-title.js`,
 			`
 module.exports = {
 	name: "update-title",
@@ -89,7 +129,7 @@ module.exports = {
 		);
 
 		fs.writeFileSync(
-			`${transformsDir}/02-update-header.js`,
+			`${transformsDir}/update-header.js`,
 			`
 module.exports = {
 	name: "update-header",
@@ -104,7 +144,7 @@ module.exports = {
 		);
 
 		fs.writeFileSync(
-			`${transformsDir}/03-add-class.js`,
+			`${transformsDir}/add-class.js`,
 			`
 module.exports = {
 	name: "add-class",
@@ -119,13 +159,24 @@ module.exports = {
 		`,
 		);
 
-		const options: CLIOptions = {
-			input: inputFile,
+		const resolvedOptions: ResolvedOptions = {
+			input: [inputFile],
 			transforms: transformsDir,
+			transformOrder: ["update-title.js", "update-header.js", "add-class.js"],
+			reference: undefined,
+			outputDir: outputDir,
+			dryRun: false,
+			verbose: false,
 			noFormat: true,
+			prettierConfig: undefined,
+			inputPattern: `${inputDir}/*.html`,
+			config: {}
 		};
 
-		const result = await transform(options);
+		const result = await transform({
+			...resolvedOptions,
+			input: inputFile
+		});
 
 		expect(result).toContain("Updated Title");
 		expect(result).toContain("Updated Header");
@@ -154,9 +205,22 @@ module.exports = {
 		`,
 		);
 
+		// Create config file
+		fs.writeFileSync(
+			`${transformsDir}/config.yaml`,
+			`
+transforms:
+  - "copy-header.js"
+input: "${inputDir}/*.html"
+output: "${outputDir}"
+reference: "${templateFile}"
+noFormat: true
+		`,
+		);
+
 		// Create transform that uses template
 		fs.writeFileSync(
-			`${transformsDir}/01-copy-header.js`,
+			`${transformsDir}/copy-header.js`,
 			`
 module.exports = {
 	name: "copy-header",
@@ -172,53 +236,75 @@ module.exports = {
 		`,
 		);
 
-		const options: CLIOptions = {
-			input: inputFile,
+		const resolvedOptions: ResolvedOptions = {
+			input: [inputFile],
 			transforms: transformsDir,
+			transformOrder: ["copy-header.js"],
 			reference: templateFile,
+			outputDir: outputDir,
+			dryRun: false,
+			verbose: false,
 			noFormat: true,
+			prettierConfig: undefined,
+			inputPattern: `${inputDir}/*.html`,
+			config: {}
 		};
 
-		const result = await transform(options);
+		const result = await transform({
+			...resolvedOptions,
+			input: inputFile
+		});
 
 		expect(result).toContain("Template Header");
 	});
 
 	it("should handle configuration object", async () => {
-		// Create config file
-		const configFile = `${testDir}/config.json`;
+		// Create transforms config file
 		fs.writeFileSync(
-			configFile,
-			JSON.stringify({
-				siteName: "Test Site",
-				version: "1.0.0",
-			}),
+			`${transformsDir}/config.yaml`,
+			`
+transforms:
+  - "use-config.js"
+input: "${inputDir}/*.html"
+output: "${outputDir}"
+noFormat: true
+		`,
 		);
 
-		// Create transform that uses config
+		// Create transform that uses a fixed value
 		fs.writeFileSync(
-			`${transformsDir}/01-use-config.js`,
+			`${transformsDir}/use-config.js`,
 			`
 module.exports = {
 	name: "use-config",
-	transform: ({ document, config }) => {
+	transform: ({ document }) => {
 		const title = document.querySelector("title");
-		if (title && config) {
-			title.textContent = config.siteName + " v" + config.version;
+		if (title) {
+			title.textContent = "Test Site v1.0.0";
 		}
 	}
 };
 		`,
 		);
 
-		const options: CLIOptions = {
-			input: inputFile,
+		const resolvedOptions: ResolvedOptions = {
+			input: [inputFile],
 			transforms: transformsDir,
-			config: configFile,
+			transformOrder: ["use-config.js"],
+			reference: undefined,
+			outputDir: outputDir,
+			dryRun: false,
+			verbose: false,
 			noFormat: true,
+			prettierConfig: undefined,
+			inputPattern: `${inputDir}/*.html`,
+			config: {}
 		};
 
-		const result = await transform(options);
+		const result = await transform({
+			...resolvedOptions,
+			input: inputFile
+		});
 
 		expect(result).toContain("Test Site v1.0.0");
 	});
