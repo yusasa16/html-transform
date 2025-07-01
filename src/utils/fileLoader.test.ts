@@ -24,22 +24,22 @@ describe("fileLoader utils", () => {
 
 	describe("ensureFileExists", () => {
 		it("should not throw error for existing file", () => {
-			const filePath = path.join(testDir, "test.txt");
+			const filePath = path.join(testDir, "test.html");
 			fs.writeFileSync(filePath, "test content");
 
 			expect(() => ensureFileExists(filePath)).not.toThrow();
 		});
 
 		it("should throw error for missing file", () => {
-			const filePath = path.join(testDir, "missing.txt");
+			const filePath = path.join(testDir, "missing.html");
 
-			expect(() => ensureFileExists(filePath)).toThrow("File not found");
+			expect(() => ensureFileExists(filePath)).toThrow("Requested file does not exist");
 		});
 	});
 
 	describe("loadFile", () => {
 		it("should load file content", () => {
-			const filePath = path.join(testDir, "test.txt");
+			const filePath = path.join(testDir, "test.html");
 			const content = "Hello, World!";
 			fs.writeFileSync(filePath, content);
 
@@ -49,13 +49,13 @@ describe("fileLoader utils", () => {
 		});
 
 		it("should throw error for missing file", () => {
-			const filePath = path.join(testDir, "missing.txt");
+			const filePath = path.join(testDir, "missing.html");
 
-			expect(() => loadFile(filePath)).toThrow("File not found");
+			expect(() => loadFile(filePath)).toThrow("Requested file does not exist");
 		});
 
 		it("should handle UTF-8 content", () => {
-			const filePath = path.join(testDir, "utf8.txt");
+			const filePath = path.join(testDir, "utf8.html");
 			const content = "日本語テスト";
 			fs.writeFileSync(filePath, content, "utf-8");
 
@@ -74,16 +74,16 @@ describe("fileLoader utils", () => {
 			const dirPath = path.join(testDir, "missing-dir");
 
 			expect(() => ensureDirectoryExists(dirPath)).toThrow(
-				"Directory not found",
+				"Requested directory does not exist",
 			);
 		});
 
 		it("should throw error when path is a file, not directory", () => {
-			const filePath = path.join(testDir, "not-a-dir.txt");
+			const filePath = path.join(testDir, "not-a-dir.html");
 			fs.writeFileSync(filePath, "content");
 
 			expect(() => ensureDirectoryExists(filePath)).toThrow(
-				"Directory not found",
+				"Requested path is not a directory",
 			);
 		});
 	});
@@ -126,7 +126,7 @@ describe("fileLoader utils", () => {
 			const missingDir = path.join(testDir, "missing");
 
 			expect(() => listFiles(missingDir, [".ts"])).toThrow(
-				"Directory not found",
+				"Requested directory does not exist",
 			);
 		});
 
