@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as yaml from "js-yaml";
 import type { TransformConfig } from "../types";
-import { ensureFileExists, loadFile } from "./fileLoader.js";
+import { loadFile } from "./fileLoader.js";
 
 export function loadConfig(configPath: string): TransformConfig {
 	const ext = path.extname(configPath).toLowerCase();
