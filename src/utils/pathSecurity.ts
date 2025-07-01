@@ -114,12 +114,12 @@ export function validateDirectory(dirPath: string): string {
 	const resolved = validatePath(dirPath);
 
 	if (!fs.existsSync(resolved)) {
-		throw new Error(`Directory does not exist: ${path.basename(resolved)}`);
+		throw new Error('Requested directory does not exist');
 	}
 
 	const stats = fs.statSync(resolved);
 	if (!stats.isDirectory()) {
-		throw new Error(`Path is not a directory: ${path.basename(resolved)}`);
+		throw new Error('Requested path is not a directory');
 	}
 
 	return resolved;
@@ -133,19 +133,19 @@ export function validateFile(filePath: string, basePath?: string): string {
 	validateExtension(validated);
 
 	if (!fs.existsSync(validated)) {
-		throw new Error(`File does not exist: ${path.basename(validated)}`);
+		throw new Error('Requested file does not exist');
 	}
 
 	const stats = fs.statSync(validated);
 	if (!stats.isFile()) {
-		throw new Error(`Path is not a file: ${path.basename(validated)}`);
+		throw new Error('Requested path is not a file');
 	}
 
 	// Check file permissions
 	try {
 		fs.accessSync(validated, fs.constants.R_OK);
 	} catch {
-		throw new Error(`File is not readable: ${path.basename(validated)}`);
+		throw new Error('Requested file is not accessible');
 	}
 
 	return validated;

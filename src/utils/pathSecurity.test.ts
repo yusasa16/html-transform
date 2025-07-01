@@ -124,7 +124,7 @@ describe("pathSecurity", () => {
 
 		it("should check directory existence", () => {
 			mockFs.existsSync.mockReturnValue(false);
-			expect(() => validateDirectory("/nonexistent")).toThrow("Directory does not exist");
+			expect(() => validateDirectory("/nonexistent")).toThrow("Requested directory does not exist");
 		});
 
 		it("should verify path is a directory", () => {
@@ -133,7 +133,7 @@ describe("pathSecurity", () => {
 				isDirectory: () => false,
 			} as any);
 			
-			expect(() => validateDirectory("/actually/a/file")).toThrow("Path is not a directory");
+			expect(() => validateDirectory("/actually/a/file")).toThrow("Requested path is not a directory");
 		});
 
 		it("should return validated directory path", () => {
@@ -168,7 +168,7 @@ describe("pathSecurity", () => {
 				throw new Error("Permission denied");
 			});
 			
-			expect(() => validateFile("/unreadable/file.html")).toThrow("File is not readable");
+			expect(() => validateFile("/unreadable/file.html")).toThrow("Requested file is not accessible");
 		});
 	});
 
