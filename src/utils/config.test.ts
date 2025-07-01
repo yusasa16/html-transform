@@ -84,7 +84,7 @@ output: "dist"
 		it("should throw error for missing file", () => {
 			const configPath = path.join(testDir, "non-existent.yaml");
 
-			expect(() => loadConfig(configPath)).toThrow("File not found");
+			expect(() => loadConfig(configPath)).toThrow("Requested file does not exist");
 		});
 
 		it("should throw error for unsupported format", () => {
@@ -92,7 +92,7 @@ output: "dist"
 			fs.writeFileSync(configPath, "some content");
 
 			expect(() => loadConfig(configPath)).toThrow(
-				"Unsupported config file format: .txt",
+				"File extension not allowed: .txt",
 			);
 		});
 

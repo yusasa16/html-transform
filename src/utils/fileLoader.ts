@@ -1,35 +1,38 @@
 import fs from "node:fs";
+import { validateFile, validateDirectory } from "./pathSecurity";
 
 export function ensureFileExists(filePath: string): void {
-	if (!fs.existsSync(filePath)) {
+	const secureFilePath = validateFile(filePath);
+	if (!fs.existsSync(secureFilePath)) {
 		throw new Error(`File not found: ${filePath}`);
 	}
 }
 
 export function loadFile(filePath: string): string {
-	ensureFileExists(filePath);
+	const secureFilePath = validateFile(filePath);
 	try {
-		return fs.readFileSync(filePath, "utf-8");
+		return fs.readFileSync(secureFilePath, "utf-8");
 	} catch (error) {
 		throw new Error(`Failed to read file ${filePath}: ${error}`);
 	}
 }
 
 export function ensureDirectoryExists(dirPath: string): void {
-	if (!fs.existsSync(dirPath)) {
+	const secureDir = validateDirectory(dirPath);
+	if (!fs.existsSync(secureDir)) {
 		throw new Error(`Directory not found: ${dirPath}`);
 	}
-	const stats = fs.statSync(dirPath);
+	const stats = fs.statSync(secureDir);
 	if (!stats.isDirectory()) {
 		throw new Error(`Directory not found: ${dirPath}`);
 	}
 }
 
 export function listFiles(dirPath: string, extensions: string[]): string[] {
-	ensureDirectoryExists(dirPath);
+	const secureDir = validateDirectory(dirPath);
 	try {
 		return fs
-			.readdirSync(dirPath)
+			.readdirSync(secureDir)
 			.filter((file) => extensions.some((ext) => file.endsWith(ext)));
 	} catch (error) {
 		throw new Error(`Failed to read directory ${dirPath}: ${error}`);
