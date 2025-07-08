@@ -100,40 +100,44 @@ describe("validation utils", () => {
 			);
 		});
 
-		it("should log warning when configPath is not provided", () => {
-			const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		it("should log warning when configPath is not provided", async () => {
+			// Mock consola.warn instead of console.warn
+			const { consola } = await import("consola");
+			const consolaSpy = vi.spyOn(consola, "warn").mockImplementation(() => {});
 			const error = new Error("Config file error");
 
 			expect(() => handleConfigError(error)).not.toThrow();
-			expect(consoleSpy).toHaveBeenCalledWith(
-				"Warning: Could not load config file: Error: Config file error",
+			expect(consolaSpy).toHaveBeenCalledWith(
+				"⚠️ Warning: Could not load config file: Error: Config file error",
 			);
 
-			consoleSpy.mockRestore();
+			consolaSpy.mockRestore();
 		});
 
-		it("should log warning when configPath is undefined", () => {
-			const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		it("should log warning when configPath is undefined", async () => {
+			const { consola } = await import("consola");
+			const consolaSpy = vi.spyOn(consola, "warn").mockImplementation(() => {});
 			const error = new Error("Another error");
 
 			expect(() => handleConfigError(error, undefined)).not.toThrow();
-			expect(consoleSpy).toHaveBeenCalledWith(
-				"Warning: Could not load config file: Error: Another error",
+			expect(consolaSpy).toHaveBeenCalledWith(
+				"⚠️ Warning: Could not load config file: Error: Another error",
 			);
 
-			consoleSpy.mockRestore();
+			consolaSpy.mockRestore();
 		});
 
-		it("should handle non-Error objects", () => {
-			const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		it("should handle non-Error objects", async () => {
+			const { consola } = await import("consola");
+			const consolaSpy = vi.spyOn(consola, "warn").mockImplementation(() => {});
 			const error = "String error";
 
 			expect(() => handleConfigError(error)).not.toThrow();
-			expect(consoleSpy).toHaveBeenCalledWith(
-				"Warning: Could not load config file: String error",
+			expect(consolaSpy).toHaveBeenCalledWith(
+				"⚠️ Warning: Could not load config file: String error",
 			);
 
-			consoleSpy.mockRestore();
+			consolaSpy.mockRestore();
 		});
 
 		it("should rethrow exact error when configPath is provided", () => {
