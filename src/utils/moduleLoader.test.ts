@@ -52,13 +52,10 @@ export default {
 
 			const result = loadModule(modulePath);
 
-			// TypeScript modules are wrapped in { default: ... }
-			expect(result).toEqual(expect.objectContaining({
-				default: {
-					name: "ts-module",
-					value: 100,
-				}
-			}));
+			expect(result.default).toEqual({
+				name: "ts-module",
+				value: 100,
+			});
 		});
 
 		it("should throw error for missing file", () => {
@@ -71,7 +68,7 @@ export default {
 
 		it("should throw error for invalid module syntax", () => {
 			const modulePath = path.join(testDir, "invalid.js");
-			fs.writeFileSync(modulePath, "invalid javascript syntax {{{");
+			fs.writeFileSync(modulePath, "invalid javascript syntax {");
 
 			expect(() => loadModule(modulePath)).toThrow(
 				"Failed to load module from",
@@ -80,7 +77,7 @@ export default {
 	});
 
 	describe("loadTransformModule", () => {
-		it("should load valid transform from JavaScript file", () => {
+		it("should load valid transform from JavaScript file", async () => {
 			const modulePath = path.join(testDir, "transform.js");
 			fs.writeFileSync(
 				modulePath,
@@ -95,14 +92,14 @@ module.exports = {
 			`,
 			);
 
-			const result = loadTransformModule(modulePath);
+			const result = await loadTransformModule(modulePath, true);
 
 			expect(result.name).toBe("test-transform");
 			expect(result.description).toBe("Test transform");
 			expect(typeof result.transform).toBe("function");
 		});
 
-		it("should load valid transform with default export", () => {
+		it("should load valid transform with default export", async () => {
 			const modulePath = path.join(testDir, "transform.js");
 			fs.writeFileSync(
 				modulePath,
@@ -116,13 +113,13 @@ module.exports = {
 			`,
 			);
 
-			const result = loadTransformModule(modulePath);
+			const result = await loadTransformModule(modulePath, true);
 
 			expect(result.name).toBe("default-transform");
 			expect(typeof result.transform).toBe("function");
 		});
 
-		it("should load TypeScript transform", () => {
+		it("should load TypeScript transform", async () => {
 			const modulePath = path.join(testDir, "transform.ts");
 			fs.writeFileSync(
 				modulePath,
@@ -136,13 +133,13 @@ export default {
 			`,
 			);
 
-			const result = loadTransformModule(modulePath);
+			const result = await loadTransformModule(modulePath, true);
 
 			expect(result.name).toBe("ts-transform");
 			expect(typeof result.transform).toBe("function");
 		});
 
-		it("should throw error for module without transform function", () => {
+		it("should throw error for module without transform function", async () => {
 			const modulePath = path.join(testDir, "invalid-transform.js");
 			fs.writeFileSync(
 				modulePath,
@@ -154,12 +151,12 @@ module.exports = {
 			`,
 			);
 
-			expect(() => loadTransformModule(modulePath)).toThrow(
+			await expect(loadTransformModule(modulePath, true)).rejects.toThrow(
 				"Transform file does not export a valid transform function",
 			);
 		});
 
-		it("should throw error for module with non-function transform", () => {
+		it("should throw error for module with non-function transform", async () => {
 			const modulePath = path.join(testDir, "invalid-transform.js");
 			fs.writeFileSync(
 				modulePath,
@@ -171,20 +168,20 @@ module.exports = {
 			`,
 			);
 
-			expect(() => loadTransformModule(modulePath)).toThrow(
+			await expect(loadTransformModule(modulePath, true)).rejects.toThrow(
 				"Transform file does not export a valid transform function",
 			);
 		});
 
-		it("should throw error for missing file", () => {
+		it("should throw error for missing file", async () => {
 			const modulePath = path.join(testDir, "missing-transform.js");
 
-			expect(() => loadTransformModule(modulePath)).toThrow(
+			await expect(loadTransformModule(modulePath, true)).rejects.toThrow(
 				"Failed to load module from",
 			);
 		});
 
-		it("should handle complex transform module", () => {
+		it("should handle complex transform module", async () => {
 			const modulePath = path.join(testDir, "complex-transform.js");
 			fs.writeFileSync(
 				modulePath,
@@ -192,22 +189,23 @@ module.exports = {
 module.exports = {
 	name: "complex-transform",
 	description: "A complex transformation",
-	version: "1.0.0",
-	transform: ({ document, templateDocument, utils }) => {
+	order: 1,
+	transform: async ({ document, templateDocument }) => {
+		// Complex transform logic here
 		const title = document.querySelector("title");
 		if (title) {
-			title.textContent = "Transformed Title";
+			title.textContent = "Complex Title";
 		}
 	}
 };
 			`,
 			);
 
-			const result = loadTransformModule(modulePath);
+			const result = await loadTransformModule(modulePath, true);
 
 			expect(result.name).toBe("complex-transform");
 			expect(result.description).toBe("A complex transformation");
-			expect(result.version).toBe("1.0.0");
+			expect(result.order).toBe(1);
 			expect(typeof result.transform).toBe("function");
 		});
 	});

@@ -12,6 +12,7 @@ import {
 	validateGlobPattern,
 	validatePath,
 } from "./utils/pathSecurity";
+import { TransformValidator } from "./utils/transformValidator";
 import {
 	handleConfigError,
 	validateInputPattern,
@@ -38,6 +39,8 @@ program
 	.option("--verbose", "Enable verbose logging")
 	.option("--no-format", "Skip Prettier formatting")
 	.option("--prettier-config <path>", "Custom Prettier config file")
+	.option("--skip-security-check", "Skip security validation of transform files")
+	.option("--security-only", "Only run security analysis without executing transforms")
 	.action(async (options: CLIOptions) => {
 		try {
 			if (options.verbose) {
@@ -49,6 +52,46 @@ program
 
 			if (resolved.verbose) {
 				console.log("Resolved options:", resolved);
+			}
+
+			// Handle security-only mode
+			if (resolved.securityOnly) {
+				console.log("Running security analysis only...");
+				const results = await TransformValidator.batchValidate(resolved.transforms);
+				const summary = TransformValidator.getBatchSummary(results);
+				
+				console.log("\n=== Security Analysis Results ===");
+				console.log(`Total files analyzed: ${summary.total}`);
+				console.log(`Safe files: ${summary.safe}`);
+				console.log(`Unsafe files: ${summary.unsafe}`);
+				console.log(`Average risk score: ${summary.averageRiskScore}/10`);
+				
+				if (summary.highestRiskFile) {
+					console.log(`Highest risk file: ${summary.highestRiskFile} (${summary.highestRiskScore}/10)`);
+				}
+				
+				console.log("\n=== Detailed Results ===");
+				for (const [fileName, analysis] of results) {
+					console.log(`\n${fileName}:`);
+					console.log(`  Safe: ${analysis.safe ? "✓" : "✗"}`);
+					console.log(`  Risk Score: ${analysis.riskScore}/10`);
+					console.log(`  Structure Valid: ${analysis.structureValid ? "✓" : "✗"}`);
+					
+					if (analysis.warnings.length > 0) {
+						console.log("  Warnings:");
+						analysis.warnings.forEach(warning => console.log(`    - ${warning}`));
+					}
+					
+					if (analysis.blockedPatterns.length > 0) {
+						console.log("  Blocked Patterns:");
+						analysis.blockedPatterns.forEach(pattern => console.log(`    - ${pattern}`));
+					}
+				}
+				
+				if (summary.unsafe > 0) {
+					process.exit(1);
+				}
+				return;
 			}
 
 			// Find common input base path to preserve directory structure
@@ -189,6 +232,8 @@ async function resolveOptions(options: CLIOptions): Promise<ResolvedOptions> {
 		prettierConfig: options.prettierConfig || config.prettierConfig,
 		inputPattern: inputPattern,
 		config: config,
+		skipSecurityCheck: options.skipSecurityCheck ?? false,
+		securityOnly: options.securityOnly ?? false,
 	};
 }
 
