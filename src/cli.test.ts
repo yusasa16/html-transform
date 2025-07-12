@@ -46,10 +46,12 @@ describe("CLI", () => {
 		// Create test directory structure using temporary directory
 		testDir = fs.mkdtempSync(path.join(os.tmpdir(), "html-transform-cli-test-"));
 		inputFile = path.join(testDir, "input.html");
-		outputFile = path.join(testDir, "output.html");
+		const outputDir = path.join(testDir, "output");
+		outputFile = path.join(outputDir, "input.html");
 		transformsDir = path.join(testDir, "transforms");
 		
 		fs.mkdirSync(transformsDir, { recursive: true });
+		fs.mkdirSync(outputDir, { recursive: true });
 
 		// Create test input HTML
 		fs.writeFileSync(
@@ -74,7 +76,7 @@ describe("CLI", () => {
 transforms:
   - "update.js"
 input: "${inputFile}"
-output: "${outputFile}"
+output: "${outputDir}"
 verbose: false
 noFormat: true
 		`,

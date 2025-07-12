@@ -61,6 +61,11 @@ program
 				} else {
 					inputBasePath = path.resolve(basePart);
 				}
+				
+				// If basePart is a file (no glob patterns), use its directory as the base
+				if (basePart === resolved.inputPattern && resolved.input.length === 1) {
+					inputBasePath = path.dirname(inputBasePath);
+				}
 			}
 
 			for (const inputFile of resolved.input) {
