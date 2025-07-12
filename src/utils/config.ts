@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as yaml from "js-yaml";
 import type { TransformConfig } from "../types";
-import { ensureFileExists, loadFile } from "./fileLoader.js";
+import { loadFile } from "./fileLoader.js";
 
 export function loadConfig(configPath: string): TransformConfig {
 	const ext = path.extname(configPath).toLowerCase();
@@ -20,6 +20,13 @@ export function loadConfig(configPath: string): TransformConfig {
 		}
 	} catch (error) {
 		throw new Error(`Failed to parse config file: ${error}`);
+	}
+
+	// Validate that input/output are not specified in config file
+	if ("input" in config || "output" in config) {
+		throw new Error(
+			'Config file should not contain "input" or "output" settings. Use CLI arguments -i and -o instead.',
+		);
 	}
 
 	return config;

@@ -40,16 +40,21 @@ describe("CLI", () => {
 	let testDir: string;
 	let inputFile: string;
 	let outputFile: string;
+	let outputDir: string;
 	let transformsDir: string;
 
 	beforeEach(() => {
 		// Create test directory structure using temporary directory
-		testDir = fs.mkdtempSync(path.join(os.tmpdir(), "html-transform-cli-test-"));
+		testDir = fs.mkdtempSync(
+			path.join(os.tmpdir(), "html-transform-cli-test-"),
+		);
 		inputFile = path.join(testDir, "input.html");
-		outputFile = path.join(testDir, "output.html");
+		outputDir = path.join(testDir, "output");
+		outputFile = path.join(outputDir, "input.html");
 		transformsDir = path.join(testDir, "transforms");
-		
+
 		fs.mkdirSync(transformsDir, { recursive: true });
+		fs.mkdirSync(outputDir, { recursive: true });
 
 		// Create test input HTML
 		fs.writeFileSync(
@@ -73,8 +78,6 @@ describe("CLI", () => {
 			`
 transforms:
   - "update.js"
-input: "${inputFile}"
-output: "${outputFile}"
 verbose: false
 noFormat: true
 		`,
@@ -109,7 +112,7 @@ module.exports = {
 	});
 
 	it("should process HTML file with transforms", async () => {
-		const args = ["-t", transformsDir];
+		const args = ["-t", transformsDir, "-i", inputFile, "-o", outputDir];
 
 		const result = await runCLI(args);
 

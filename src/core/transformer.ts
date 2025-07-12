@@ -77,7 +77,7 @@ export async function loadTransforms(
 		try {
 			const transform = loadTransformModule(filePath);
 			transforms.push(transform);
-		} catch (error) {}
+		} catch (_error) {}
 	}
 
 	return transforms;

@@ -26,8 +26,6 @@ describe("config utils", () => {
 transforms:
   - "transform1.ts"
   - "transform2.ts"
-input: "input/**/*.html"
-output: "output"
 verbose: true
 noFormat: false
 			`,
@@ -36,8 +34,6 @@ noFormat: false
 			const config = loadConfig(configPath);
 
 			expect(config.transforms).toEqual(["transform1.ts", "transform2.ts"]);
-			expect(config.input).toBe("input/**/*.html");
-			expect(config.output).toBe("output");
 			expect(config.verbose).toBe(true);
 			expect(config.noFormat).toBe(false);
 		});
@@ -49,16 +45,12 @@ noFormat: false
 				`
 transforms:
   - "transform.ts"
-input: "src/*.html"
-output: "dist"
 			`,
 			);
 
 			const config = loadConfig(configPath);
 
 			expect(config.transforms).toEqual(["transform.ts"]);
-			expect(config.input).toBe("src/*.html");
-			expect(config.output).toBe("dist");
 		});
 
 		it("should load JSON config file", () => {
@@ -67,8 +59,6 @@ output: "dist"
 				configPath,
 				JSON.stringify({
 					transforms: ["transform.js"],
-					input: "pages/*.html",
-					output: "build",
 					dryRun: true,
 				}),
 			);
@@ -76,15 +66,47 @@ output: "dist"
 			const config = loadConfig(configPath);
 
 			expect(config.transforms).toEqual(["transform.js"]);
-			expect(config.input).toBe("pages/*.html");
-			expect(config.output).toBe("build");
 			expect(config.dryRun).toBe(true);
+		});
+
+		it("should throw error when config contains input field", () => {
+			const configPath = path.join(testDir, "config-with-input.yaml");
+			fs.writeFileSync(
+				configPath,
+				`
+transforms:
+  - "transform.ts"
+input: "src/*.html"
+			`,
+			);
+
+			expect(() => loadConfig(configPath)).toThrow(
+				'Config file should not contain "input" or "output" settings',
+			);
+		});
+
+		it("should throw error when config contains output field", () => {
+			const configPath = path.join(testDir, "config-with-output.yaml");
+			fs.writeFileSync(
+				configPath,
+				`
+transforms:
+  - "transform.ts"
+output: "dist"
+			`,
+			);
+
+			expect(() => loadConfig(configPath)).toThrow(
+				'Config file should not contain "input" or "output" settings',
+			);
 		});
 
 		it("should throw error for missing file", () => {
 			const configPath = path.join(testDir, "non-existent.yaml");
 
-			expect(() => loadConfig(configPath)).toThrow("File not found");
+			expect(() => loadConfig(configPath)).toThrow(
+				"Requested file does not exist",
+			);
 		});
 
 		it("should throw error for unsupported format", () => {
@@ -92,7 +114,7 @@ output: "dist"
 			fs.writeFileSync(configPath, "some content");
 
 			expect(() => loadConfig(configPath)).toThrow(
-				"Unsupported config file format: .txt",
+				"File extension not allowed: .txt",
 			);
 		});
 
@@ -100,14 +122,18 @@ output: "dist"
 			const configPath = path.join(testDir, "config.yaml");
 			fs.writeFileSync(configPath, "invalid: yaml: content: [");
 
-			expect(() => loadConfig(configPath)).toThrow("Failed to parse config file");
+			expect(() => loadConfig(configPath)).toThrow(
+				"Failed to parse config file",
+			);
 		});
 
 		it("should throw error for invalid JSON", () => {
 			const configPath = path.join(testDir, "config.json");
 			fs.writeFileSync(configPath, "{ invalid json }");
 
-			expect(() => loadConfig(configPath)).toThrow("Failed to parse config file");
+			expect(() => loadConfig(configPath)).toThrow(
+				"Failed to parse config file",
+			);
 		});
 	});
 

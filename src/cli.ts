@@ -7,10 +7,15 @@ import { transform } from "./core/transformer";
 import type { CLIOptions, ResolvedOptions, TransformConfig } from "./types";
 import { findConfigFile, loadConfig } from "./utils/config";
 import {
+	validateDirectory,
+	validateFile,
+	validateGlobPattern,
+	validatePath,
+} from "./utils/pathSecurity";
+import {
 	handleConfigError,
 	validateInputPattern,
 	validateOutputDirectory,
-	validateRequired,
 } from "./utils/validation.js";
 
 const packageJson = require("../package.json");
@@ -21,13 +26,13 @@ program
 	.name("html-transform")
 	.description("Transform HTML files using jsdom and TypeScript transforms")
 	.version(packageJson.version)
-	.option("-i, --input <pattern>", "Input HTML file pattern (glob)")
+	.requiredOption("-i, --input <pattern>", "Input HTML file pattern (glob)")
 	.requiredOption(
 		"-t, --transforms <dir>",
 		"Directory containing compiled transform files and config",
 	)
 	.option("-r, --reference <path>", "Reference template HTML file")
-	.option("-o, --output <dir>", "Output directory path")
+	.requiredOption("-o, --output <dir>", "Output directory path")
 	.option("-c, --config <path>", "Configuration file path")
 	.option("--dry-run", "Run without writing files")
 	.option("--verbose", "Enable verbose logging")
@@ -51,14 +56,11 @@ program
 			if (resolved.inputPattern) {
 				// Extract base path from pattern (remove glob parts)
 				const basePart = resolved.inputPattern.replace(/\/\*\*?.*$/, "");
-				if (
-					!options.input &&
-					resolved.config.input &&
-					!path.isAbsolute(resolved.inputPattern)
-				) {
-					inputBasePath = path.resolve(options.transforms, basePart);
-				} else {
-					inputBasePath = path.resolve(basePart);
+				inputBasePath = path.resolve(basePart);
+
+				// If basePart is a file (no glob patterns), use its directory as the base
+				if (basePart === resolved.inputPattern && resolved.input.length === 1) {
+					inputBasePath = path.dirname(inputBasePath);
 				}
 			}
 
@@ -102,36 +104,44 @@ program
 	});
 
 async function resolveOptions(options: CLIOptions): Promise<ResolvedOptions> {
+	// Validate and secure transforms directory path
+	const secureTransformsDir = validateDirectory(options.transforms);
+
 	// Find config file
-	const configPath = options.config || findConfigFile(options.transforms);
+	const configPath = options.config || findConfigFile(secureTransformsDir);
 	let config: Partial<TransformConfig> = {};
 
 	if (configPath) {
 		try {
-			config = loadConfig(configPath);
+			// Validate config file path
+			const secureConfigPath = validateFile(configPath);
+			config = loadConfig(secureConfigPath);
 			if (options.verbose) {
-				console.log(`Loaded config from: ${configPath}`);
+				console.log(`Loaded config from: ${secureConfigPath}`);
 			}
 		} catch (error) {
 			handleConfigError(error, options.config);
 		}
 	} else if (!options.config) {
 		throw new Error(
-			`Config file (config.yaml, config.yml, or config.json) is required in transforms directory: ${options.transforms}`,
+			`Config file (config.yaml, config.yml, or config.json) is required in transforms directory: ${secureTransformsDir}`,
 		);
 	}
 
-	// Resolve input files using glob - CLI options override config
-	const inputPattern = validateRequired(
-		options.input || config.input,
-		"Input pattern (either via CLI option -i or config file)",
-	);
+	// Resolve input files using glob - CLI options only
+	const inputPattern = options.input;
 	validateInputPattern(inputPattern);
 
-	// If pattern is relative and comes from config, resolve it relative to transforms directory
+	// For relative patterns, resolve from current working directory
 	let resolvedPattern = inputPattern;
-	if (!options.input && config.input && !path.isAbsolute(inputPattern)) {
-		resolvedPattern = path.resolve(options.transforms, inputPattern);
+	if (!path.isAbsolute(inputPattern)) {
+		// Validate relative pattern for security (no path traversal)
+		const securePattern = validateGlobPattern(inputPattern, process.cwd());
+		resolvedPattern = path.resolve(process.cwd(), securePattern);
+	} else {
+		// For absolute patterns, validate base path
+		const basePath = path.dirname(resolvedPattern);
+		validatePath(basePath);
 	}
 
 	const inputFiles = await glob(resolvedPattern);
@@ -141,25 +151,38 @@ async function resolveOptions(options: CLIOptions): Promise<ResolvedOptions> {
 		);
 	}
 
-	// Resolve output directory - CLI options override config
-	const outputDir = validateRequired(
-		options.output || config.output,
-		"Output directory (either via CLI option -o or config file)",
-	);
+	// Validate each found input file
+	const secureInputFiles = inputFiles.map((file) => validateFile(file));
+
+	// Resolve output directory - CLI options only
+	const outputDir = options.output;
 	validateOutputDirectory(outputDir);
 
+	// Validate output directory path
 	let resolvedOutputDir = outputDir;
-	if (!options.output && config.output && !path.isAbsolute(outputDir)) {
-		resolvedOutputDir = path.resolve(options.transforms, outputDir);
+	if (!path.isAbsolute(outputDir)) {
+		// Validate relative pattern for security (no path traversal)
+		validateGlobPattern(outputDir, process.cwd());
+		resolvedOutputDir = path.resolve(process.cwd(), outputDir);
+	}
+	const secureOutputDir = validateDirectory(resolvedOutputDir);
+
+	// Validate reference file if provided
+	let secureReference: string | undefined;
+	if (options.reference || config.reference) {
+		const refPath = options.reference || config.reference;
+		if (refPath) {
+			secureReference = validateFile(refPath);
+		}
 	}
 
 	// CLI options override config
 	return {
-		input: inputFiles,
-		transforms: options.transforms,
+		input: secureInputFiles,
+		transforms: secureTransformsDir,
 		transformOrder: config.transforms || [],
-		reference: options.reference || config.reference,
-		outputDir: resolvedOutputDir,
+		reference: secureReference,
+		outputDir: secureOutputDir,
 		dryRun: options.dryRun ?? config.dryRun ?? false,
 		verbose: options.verbose ?? config.verbose ?? false,
 		noFormat: options.noFormat ?? config.noFormat ?? false,
