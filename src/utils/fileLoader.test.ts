@@ -33,7 +33,9 @@ describe("fileLoader utils", () => {
 		it("should throw error for missing file", () => {
 			const filePath = path.join(testDir, "missing.html");
 
-			expect(() => ensureFileExists(filePath)).toThrow("Requested file does not exist");
+			expect(() => ensureFileExists(filePath)).toThrow(
+				"Requested file does not exist",
+			);
 		});
 	});
 

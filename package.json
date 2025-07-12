@@ -18,7 +18,7 @@
 		"format:fix": "npx @biomejs/biome format --write .",
 		"check": "npx @biomejs/biome check .",
 		"check:fix": "npx @biomejs/biome check --write .",
-		"test:cli": "npm run build && node dist/cli.js -i test/input.html -t test/transforms/ -o test/output.html --verbose",
+		"test:cli": "npm run build && node dist/cli.js -t test/transforms/ -i 'test/input/**/*.html' -o test/output --verbose",
 		"test": "vitest",
 		"test:run": "vitest run",
 		"test:coverage": "vitest run --coverage",

@@ -6,12 +6,16 @@ import { glob } from "glob";
 import { transform } from "./core/transformer";
 import type { CLIOptions, ResolvedOptions, TransformConfig } from "./types";
 import { findConfigFile, loadConfig } from "./utils/config";
-import { validatePath, validateFile, validateDirectory, validateGlobPattern } from "./utils/pathSecurity";
+import {
+	validateDirectory,
+	validateFile,
+	validateGlobPattern,
+	validatePath,
+} from "./utils/pathSecurity";
 import {
 	handleConfigError,
 	validateInputPattern,
 	validateOutputDirectory,
-	validateRequired,
 } from "./utils/validation.js";
 
 const packageJson = require("../package.json");
@@ -22,13 +26,13 @@ program
 	.name("html-transform")
 	.description("Transform HTML files using jsdom and TypeScript transforms")
 	.version(packageJson.version)
-	.option("-i, --input <pattern>", "Input HTML file pattern (glob)")
+	.requiredOption("-i, --input <pattern>", "Input HTML file pattern (glob)")
 	.requiredOption(
 		"-t, --transforms <dir>",
 		"Directory containing compiled transform files and config",
 	)
 	.option("-r, --reference <path>", "Reference template HTML file")
-	.option("-o, --output <dir>", "Output directory path")
+	.requiredOption("-o, --output <dir>", "Output directory path")
 	.option("-c, --config <path>", "Configuration file path")
 	.option("--dry-run", "Run without writing files")
 	.option("--verbose", "Enable verbose logging")
@@ -52,16 +56,8 @@ program
 			if (resolved.inputPattern) {
 				// Extract base path from pattern (remove glob parts)
 				const basePart = resolved.inputPattern.replace(/\/\*\*?.*$/, "");
-				if (
-					!options.input &&
-					resolved.config.input &&
-					!path.isAbsolute(resolved.inputPattern)
-				) {
-					inputBasePath = path.resolve(options.transforms, basePart);
-				} else {
-					inputBasePath = path.resolve(basePart);
-				}
-				
+				inputBasePath = path.resolve(basePart);
+
 				// If basePart is a file (no glob patterns), use its directory as the base
 				if (basePart === resolved.inputPattern && resolved.input.length === 1) {
 					inputBasePath = path.dirname(inputBasePath);
@@ -132,18 +128,16 @@ async function resolveOptions(options: CLIOptions): Promise<ResolvedOptions> {
 		);
 	}
 
-	// Resolve input files using glob - CLI options override config
-	const inputPattern = validateRequired(
-		options.input || config.input,
-		"Input pattern (either via CLI option -i or config file)",
-	);
+	// Resolve input files using glob - CLI options only
+	const inputPattern = options.input;
 	validateInputPattern(inputPattern);
 
-	// Validate glob pattern for security
+	// For relative patterns, resolve from current working directory
 	let resolvedPattern = inputPattern;
-	if (!options.input && config.input && !path.isAbsolute(inputPattern)) {
-		const securePattern = validateGlobPattern(inputPattern, secureTransformsDir);
-		resolvedPattern = path.resolve(secureTransformsDir, securePattern);
+	if (!path.isAbsolute(inputPattern)) {
+		// Validate relative pattern for security (no path traversal)
+		const securePattern = validateGlobPattern(inputPattern, process.cwd());
+		resolvedPattern = path.resolve(process.cwd(), securePattern);
 	} else {
 		// For absolute patterns, validate base path
 		const basePath = path.dirname(resolvedPattern);
@@ -158,19 +152,18 @@ async function resolveOptions(options: CLIOptions): Promise<ResolvedOptions> {
 	}
 
 	// Validate each found input file
-	const secureInputFiles = inputFiles.map(file => validateFile(file));
+	const secureInputFiles = inputFiles.map((file) => validateFile(file));
 
-	// Resolve output directory - CLI options override config
-	const outputDir = validateRequired(
-		options.output || config.output,
-		"Output directory (either via CLI option -o or config file)",
-	);
+	// Resolve output directory - CLI options only
+	const outputDir = options.output;
 	validateOutputDirectory(outputDir);
 
 	// Validate output directory path
 	let resolvedOutputDir = outputDir;
-	if (!options.output && config.output && !path.isAbsolute(outputDir)) {
-		resolvedOutputDir = path.resolve(secureTransformsDir, outputDir);
+	if (!path.isAbsolute(outputDir)) {
+		// Validate relative pattern for security (no path traversal)
+		validateGlobPattern(outputDir, process.cwd());
+		resolvedOutputDir = path.resolve(process.cwd(), outputDir);
 	}
 	const secureOutputDir = validateDirectory(resolvedOutputDir);
 

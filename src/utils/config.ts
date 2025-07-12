@@ -22,6 +22,13 @@ export function loadConfig(configPath: string): TransformConfig {
 		throw new Error(`Failed to parse config file: ${error}`);
 	}
 
+	// Validate that input/output are not specified in config file
+	if ("input" in config || "output" in config) {
+		throw new Error(
+			'Config file should not contain "input" or "output" settings. Use CLI arguments -i and -o instead.',
+		);
+	}
+
 	return config;
 }
 

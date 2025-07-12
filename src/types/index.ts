@@ -23,10 +23,10 @@ export interface TransformUtils {
 }
 
 export interface CLIOptions {
-	input?: string;
+	input: string;
 	transforms: string;
 	reference?: string;
-	output?: string;
+	output: string;
 	config?: string;
 	dryRun?: boolean;
 	verbose?: boolean;
@@ -36,9 +36,7 @@ export interface CLIOptions {
 
 export interface TransformConfig {
 	transforms: string[];
-	input?: string;
 	reference?: string;
-	output?: string;
 	dryRun?: boolean;
 	noFormat?: boolean;
 	prettierConfig?: string;

@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { validateFile, validateDirectory } from "./pathSecurity";
+import { validateDirectory, validateFile } from "./pathSecurity";
 
 export function ensureFileExists(filePath: string): void {
 	const secureFilePath = validateFile(filePath);

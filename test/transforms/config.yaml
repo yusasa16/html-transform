@@ -4,10 +4,6 @@ transforms:
     - "update-header.ts"
     - "add-class.ts"
 
-# Required settings
-input: "../input/**/*.html"
-output: "../output"
-
 # Optional settings
 reference: null
 dryRun: false
