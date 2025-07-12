@@ -32,6 +32,8 @@ export interface CLIOptions {
 	verbose?: boolean;
 	noFormat?: boolean;
 	prettierConfig?: string;
+	skipSecurityCheck?: boolean;
+	securityOnly?: boolean;
 }
 
 export interface TransformConfig {
@@ -55,6 +57,8 @@ export interface ResolvedOptions {
 	prettierConfig?: string;
 	inputPattern?: string;
 	config: Partial<TransformConfig>;
+	skipSecurityCheck?: boolean;
+	securityOnly?: boolean;
 }
 
 export interface FormatOptions {

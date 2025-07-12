@@ -47,6 +47,7 @@ export function loadHTML(filePath: string): JSDOM {
 export async function loadTransforms(
 	transformsDir: string,
 	transformOrder?: string[],
+	skipSecurityCheck = false,
 ): Promise<Transform[]> {
 	ensureDirectoryExists(transformsDir);
 
@@ -75,9 +76,11 @@ export async function loadTransforms(
 	for (const file of files) {
 		const filePath = path.resolve(transformsDir, file);
 		try {
-			const transform = loadTransformModule(filePath);
+			const transform = await loadTransformModule(filePath, skipSecurityCheck);
 			transforms.push(transform);
-		} catch (_error) {}
+		} catch (_error) {
+			// Skip transforms that fail to load or pass security validation
+		}
 	}
 
 	return transforms;
@@ -159,6 +162,7 @@ export async function transform(
 	const transforms = await loadTransforms(
 		transformsDir,
 		options.transformOrder,
+		options.skipSecurityCheck,
 	);
 
 	if (options.verbose) {
